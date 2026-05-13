@@ -11,7 +11,7 @@
       (function () {
         var params = new URLSearchParams(window.location.search);
         var fragment = params.get("html") || "";
-        document.getElementById("out").innerHTML = fragment;
+        document.getElementById("out").textContent = fragment;
       })();
     </script>
   </body>
