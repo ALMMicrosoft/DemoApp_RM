@@ -6,6 +6,20 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $Root
 
+# Git prints non-fatal messages (e.g. "Already on 'main'") to stderr; PowerShell can treat that as a terminating error when $ErrorActionPreference is Stop.
+function Invoke-GitNoThrow {
+  param([Parameter(Mandatory = $true)][string[]]$Args)
+  $prev = $ErrorActionPreference
+  $ErrorActionPreference = "SilentlyContinue"
+  try {
+    & git @Args 2>&1 | Out-Null
+    return $LASTEXITCODE
+  }
+  finally {
+    $ErrorActionPreference = $prev
+  }
+}
+
 function Copy-PrArtifact([int]$n) {
   $src = Join-Path $Root "tooling\benchmark-pr-artifacts\pr-$('{0:D2}' -f $n)"
   if (-not (Test-Path $src)) { throw "Missing artifact folder: $src" }
@@ -26,7 +40,7 @@ if (-not (Test-Path (Join-Path $Root ".git"))) {
 }
 
 # Ensure main is clean of benchmark .js routes (only .gitkeep under src/benchmark)
-git checkout main 2>$null
+Invoke-GitNoThrow @("checkout", "-q", "main") | Out-Null
 Get-ChildItem (Join-Path $Root "src\benchmark") -Filter "*.js" -ErrorAction SilentlyContinue | Remove-Item -Force
 Get-ChildItem (Join-Path $Root "public") -Recurse -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
 if (-not (Test-Path (Join-Path $Root "src\benchmark"))) { New-Item -ItemType Directory -Path (Join-Path $Root "src\benchmark") -Force | Out-Null }
@@ -47,14 +61,15 @@ $prs = @(
 )
 
 foreach ($pr in $prs) {
-  git checkout main
-  git branch -D $pr.branch 2>$null
-  git checkout -b $pr.branch
+  Invoke-GitNoThrow @("checkout", "-q", "main") | Out-Null
+  Invoke-GitNoThrow @("branch", "-D", $pr.branch) | Out-Null
+  git checkout -q -b $pr.branch
+  if ($LASTEXITCODE -ne 0) { throw "git checkout -b $($pr.branch) failed with exit $LASTEXITCODE" }
   Copy-PrArtifact $pr.n
   git add -A
   git commit -m $pr.msg
   Write-Host "Created branch $($pr.branch)"
 }
 
-git checkout main
+Invoke-GitNoThrow @("checkout", "-q", "main") | Out-Null
 Write-Host "Done. Push: git push -u origin --all && open 5 PRs from each benchmark/* branch to main."
