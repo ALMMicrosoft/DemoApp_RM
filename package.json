@@ -1,0 +1,13 @@
+{
+  "name": "sast-detection-benchmark",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Intentionally vulnerable snippets for measuring static analysis tools. Do not deploy.",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "sqlite3": "^5.1.7"
+  }
+}
