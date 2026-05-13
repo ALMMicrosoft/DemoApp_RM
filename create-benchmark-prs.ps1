@@ -42,7 +42,11 @@ if (-not (Test-Path (Join-Path $Root ".git"))) {
 # Ensure main is clean of benchmark .js routes (only .gitkeep under src/benchmark)
 Invoke-GitNoThrow @("checkout", "-q", "main") | Out-Null
 Get-ChildItem (Join-Path $Root "src\benchmark") -Filter "*.js" -ErrorAction SilentlyContinue | Remove-Item -Force
-Get-ChildItem (Join-Path $Root "public") -Recurse -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
+# Only remove benchmark static assets (avoid wiping all of /public — reparse points could delete unrelated paths).
+$pr05Public = Join-Path $Root "public\benchmark-pr05"
+if (Test-Path $pr05Public) {
+  Remove-Item $pr05Public -Recurse -Force
+}
 if (-not (Test-Path (Join-Path $Root "src\benchmark"))) { New-Item -ItemType Directory -Path (Join-Path $Root "src\benchmark") -Force | Out-Null }
 if (-not (Test-Path (Join-Path $Root "src\benchmark\.gitkeep"))) { New-Item -ItemType File -Path (Join-Path $Root "src\benchmark\.gitkeep") -Force | Out-Null }
 
